@@ -30,6 +30,52 @@ public class Gramatica {
             System.out.println(sn);
         }
     }
+    public void mostrarGramatica() {
+        // Conjunt de símbols no terminals
+        Set<String> noTerminals = new LinkedHashSet<>();
+        for (SimbolNoTerminal sn : simbols) {
+            noTerminals.add(sn.getSimbol());
+        }
+
+        // Conjunt de terminals
+        Set<Character> terminals = obtenirSimbolsTerminals();
+
+        System.out.println("Sigui la gramàtica G = (N, T, P, S) amb:\n");
+
+        // Mostrar N
+        System.out.print("N = {");
+        Iterator<String> itN = noTerminals.iterator();
+        while (itN.hasNext()) {
+            System.out.print(itN.next());
+            if (itN.hasNext()) System.out.print(", ");
+        }
+        System.out.println("}     (símbols no terminals)");
+
+        // Mostrar T
+        System.out.print("T = {");
+        Iterator<Character> itT = terminals.iterator();
+        while (itT.hasNext()) {
+            System.out.print(itT.next());
+            if (itT.hasNext()) System.out.print(", ");
+        }
+        System.out.println("}     (símbols terminals)");
+
+        // Mostrar produccions
+        System.out.println("\nProduccions P:");
+        for (SimbolNoTerminal sn : simbols) {
+            List<String> produccions = sn.getProduccions();
+            if (!produccions.isEmpty()) {
+                System.out.print(sn.getSimbol() + " → ");
+                for (int i = 0; i < produccions.size(); i++) {
+                    System.out.print(produccions.get(i));
+                    if (i < produccions.size() - 1) {
+                        System.out.print(" | ");
+                    }
+                }
+                System.out.println();
+            }
+        }
+    }
 
     // Mètode per obtenir un símbol no terminal per nom
     public SimbolNoTerminal obtenirSimbol(String simbol) {
@@ -182,17 +228,16 @@ public class Gramatica {
         Set<String> fecunds = calcularSimbolsFecunds();
         Set<String> accessibles = calcularSimbolsAccessibles(fecunds);
 
-        // Simbols útils: han de ser fecunds i accessibles
         Set<String> utils = new HashSet<>(fecunds);
         utils.retainAll(accessibles);
 
-        // Eliminar símbols no útils i produccions amb símbols no útils
         ArrayList<SimbolNoTerminal> nousSimbols = new ArrayList<>();
 
         for (SimbolNoTerminal sn : simbols) {
-            if (!utils.contains(sn.getSimbol())) continue;
+            String nomSimbol = sn.getSimbol();
+            if (!utils.contains(nomSimbol) && !nomSimbol.equals("S")) continue;
 
-            SimbolNoTerminal nouSN = new SimbolNoTerminal(sn.getSimbol());
+            SimbolNoTerminal nouSN = new SimbolNoTerminal(nomSimbol);
 
             for (String produccio : sn.getProduccions()) {
                 boolean produccioValida = true;
@@ -207,15 +252,15 @@ public class Gramatica {
                 }
             }
 
-            if (!nouSN.getProduccions().isEmpty()) {
+            // Afegim el símbol encara que no tingui produccions, si és S
+            if (!nouSN.getProduccions().isEmpty() || nomSimbol.equals("S")) {
                 nousSimbols.add(nouSN);
             }
         }
 
-        // Actualitzar la gramàtica
         this.simbols = nousSimbols;
     }
-    private Set<String> calcularSimbolsFecunds() {
+    protected Set<String> calcularSimbolsFecunds() {
         Set<String> fecunds = new HashSet<>();
         Set<String> anterior;
 
