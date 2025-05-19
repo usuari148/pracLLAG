@@ -328,52 +328,7 @@ public class TestGramatica extends Gramatica{
         assertNotNull(g.obtenirSimbol("A"));
         assertNull(g.obtenirSimbol("B")); // B hauria d’eliminar-se
     }
-    @Test
-    void testCasosEspecialsEliminarSimbolsInutils() {
-        // Paraula buida (&)
-        Gramatica g1 = creaGramaticaAmbSimbols(new String[][] {
-                {"S", "&"},
-                {"A", "S"}
-        });
-        g1.eliminarSimbolsInutils();
-        assertNotNull(g1.obtenirSimbol("S"));
-        assertEquals(List.of("&"), g1.obtenirSimbol("S").getProduccions());
-        assertEquals(List.of("S"), g1.obtenirSimbol("A").getProduccions());
 
-        // Cicle fecund i accessible
-        Gramatica g2 = creaGramaticaAmbSimbols(new String[][] {
-                {"S", "A"},
-                {"A", "B"},
-                {"B", "S"} // Cicle S → A → B → S
-        });
-        g2.eliminarSimbolsInutils();
-        assertNotNull(g2.obtenirSimbol("S"));
-        assertNotNull(g2.obtenirSimbol("A"));
-        assertNotNull(g2.obtenirSimbol("B"));
-
-        // Cicle no fecund
-        Gramatica g3 = creaGramaticaAmbSimbols(new String[][] {
-                {"S", "A"},
-                {"A", "B"},
-                {"B", "S"} // Cap arriba a producció terminal
-        });
-        g3.eliminarSimbolsInutils();
-        SimbolNoTerminal s3 = g3.obtenirSimbol("S");
-        assertNotNull(s3); // S sempre es manté
-        assertTrue(s3.getProduccions().isEmpty()); // Però sense produccions
-        assertNull(g3.obtenirSimbol("A")); // Eliminats per ser inútils
-        assertNull(g3.obtenirSimbol("B"));
-
-        // Producció amb símbol útil i un d'inútil (B no definit)
-        Gramatica g4 = creaGramaticaAmbSimbols(new String[][] {
-                {"S", "aA", "aB"},
-                {"A", "b"}
-        });
-        g4.eliminarSimbolsInutils();
-        assertEquals(List.of("aA"), g4.obtenirSimbol("S").getProduccions()); // només es conserva "aA"
-        assertNotNull(g4.obtenirSimbol("A")); // A és útil
-        assertNull(g4.obtenirSimbol("B")); // B no està definit → es tracta com a inútil
-    }
     @Test
     void testSimbolFecundAmbParaulaBuida() {
         Gramatica g = creaGramaticaAmbSimbols(new String[][] {
@@ -386,5 +341,104 @@ public class TestGramatica extends Gramatica{
         assertTrue(fecunds.contains("S"));
         assertTrue(fecunds.contains("A"));
     }
+    @Test
+    void testProduccioParcialmentEliminada() {
+        Gramatica g = creaGramaticaAmbSimbols(new String[][]{
+                {"S", "A"},
+                {"A", "a"},
+                {"B", "c"} // B és inútil
+        });
 
+        g.eliminarSimbolsInutils();
+
+        // 'S' hauria de seguir existint
+        assertNotNull(g.obtenirSimbol("S"));
+        assertEquals(List.of("A"), g.obtenirSimbol("S").getProduccions());
+
+        // 'A' també és útil
+        assertNotNull(g.obtenirSimbol("A"));
+        assertEquals(List.of("a"), g.obtenirSimbol("A").getProduccions());
+
+        // 'B' ha de ser eliminat
+        assertNull(g.obtenirSimbol("B"));
+    }
+
+    // Cas mixt: S → A B (B no fecund), A → a
+    @Test
+    void testCasMixt() {
+        Gramatica g = creaGramaticaAmbSimbols(new String[][]{
+                {"S", "AB"},
+                {"A", "a"},
+                {"B", "CD"},
+                {"C", "c"},
+                {"D", "d"},
+                {"E", "e"} // Inútil
+        });
+
+        g.eliminarSimbolsInutils();
+
+        assertNotNull(g.obtenirSimbol("S"));
+        assertEquals(List.of("AB"), g.obtenirSimbol("S").getProduccions());
+
+        assertNotNull(g.obtenirSimbol("A"));
+        assertNotNull(g.obtenirSimbol("B"));
+        assertNotNull(g.obtenirSimbol("C"));
+        assertNotNull(g.obtenirSimbol("D"));
+
+        // 'E' no contribueix a cap producció, s'ha d'eliminar
+        assertNull(g.obtenirSimbol("E"));
+    }
+
+    //  Cicle útil (A ↔ B amb producció terminal)
+    @Test
+    void testCicleEntreSimbolsFecundsIAccessibles() {
+        Gramatica g = creaGramaticaAmbSimbols(new String[][]{
+                {"S", "A"},
+                {"A", "B"},
+                {"B", "A"},
+                {"B", "b"}
+        });
+
+        g.eliminarSimbolsInutils();
+
+        assertNotNull(g.obtenirSimbol("S"));
+        assertNotNull(g.obtenirSimbol("A"));
+        assertNotNull(g.obtenirSimbol("B"));
+    }
+
+    // Cicle inútil (A → B → A, sense terminals)
+    @Test
+    void testCicleInutilSenseSortida() {
+        Gramatica g = creaGramaticaAmbSimbols(new String[][]{
+                {"S", "A"},
+                {"A", "B"},
+                {"B", "A"}
+        });
+
+        g.eliminarSimbolsInutils();
+
+        assertNotNull(g.obtenirSimbol("S"));
+        assertTrue(g.obtenirSimbol("S").getProduccions().isEmpty());
+        assertNull(g.obtenirSimbol("A"));
+        assertNull(g.obtenirSimbol("B"));
+    }
+
+    // Simbols fecunds però no accessibles
+    @Test
+    void testSimbolsFecundsPeroNoAccessibles() {
+        Gramatica g = creaGramaticaAmbSimbols(new String[][]{
+                {"S", "a"},
+                {"A", "b"}, // No accessible
+                {"B", "c"}  // No accessible
+        });
+
+        g.eliminarSimbolsInutils();
+
+        // Només 'S' ha de quedar
+        assertNotNull(g.obtenirSimbol("S"));
+        assertEquals(List.of("a"), g.obtenirSimbol("S").getProduccions());
+
+        assertNull(g.obtenirSimbol("A"));
+        assertNull(g.obtenirSimbol("B"));
+    }
 }
